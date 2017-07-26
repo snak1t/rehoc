@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Validator should exist 1`] = `
+Object {
+  "asyncField": Object {
+    "errors": Array [],
+    "handler": [Function],
+    "status": Object {
+      "dirty": false,
+      "valid": false,
+    },
+    "value": "",
+  },
+  "login": Object {
+    "errors": Array [],
+    "handler": [Function],
+    "status": Object {
+      "dirty": false,
+      "valid": false,
+    },
+    "value": "",
+  },
+  "valid": false,
+}
+`;

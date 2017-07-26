@@ -25,6 +25,12 @@
     "react": "15.6.1"
   },
   "devDependencies": {
-    "jest": "20.0.4"
+    "babel-jest": "20.0.3",
+    "babel-preset-env": "1.6.0",
+    "babel-preset-react": "6.24.1",
+    "enzyme": "2.9.1",
+    "jest": "20.0.4",
+    "react-dom": "15.6.1",
+    "react-test-renderer": "15.6.1"
   }
 }

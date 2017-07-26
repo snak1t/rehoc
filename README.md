@@ -1,5 +1,7 @@
 React Forms Validation (rehoc-validator)
 ======
+[![Edit Rehoc Validator Example](https://img.shields.io/badge/CodeSandbox-demo-blue.svg)](https://codesandbox.io/s/qxNYvy53)
+[![npm version](https://img.shields.io/npm/v/rehoc-validator.svg)](https://www.npmjs.com/package/rehoc-validator)
 
 Rehoc-validator is a javascript library for React, for easily perform forms validation. It's a validation data layer that only provides information about validation state of each value. We don't provide validation input components etc. It's for you how to manage this data.
 
@@ -170,5 +172,3 @@ Each field that was described in validation config is passed down as objects wit
 3. `status` - Object<{dirty: boolean, valid: boolean}>
 
 That's all.
-[![Edit Rehoc Validator Example](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/qxNYvy53)
-

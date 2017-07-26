@@ -33,26 +33,34 @@ const withValidation = config => Component => {
       if (typeof validators === 'undefined') {
         return []
       }
-      const errors = validators.reduce(
-        (errors, { withFields, rule, message, async: asyncValidator }) => {
-          if (asyncValidator) {
-            if (isTarget) {
-              this.performAsyncValidation(rule, message, key, value)
-            } else {
-              if (state[key].errors.includes(message)) {
-                return [...errors, message]
-              }
+      const errors = validators.reduce((
+        errors,
+        validator // Never perform destructure of validator (getter oneOf)
+      ) => {
+        if (validator.async) {
+          if (isTarget) {
+            this.performAsyncValidation(
+              validator.rule,
+              validator.message,
+              key,
+              value
+            )
+          } else {
+            if (state[key].errors.includes(validator.message)) {
+              return [...errors, validator.message]
             }
-            return errors
           }
-          const valid =
-            withFields !== void 0
-              ? rule(value, ...withFields.map(key => state[key].value))
-              : rule(value)
-          return valid ? errors : [...errors, message]
-        },
-        []
-      )
+          return errors
+        }
+        const valid =
+          validator.withFields !== void 0
+            ? validator.rule(
+                value,
+                ...validator.withFields.map(key => state[key].value)
+              )
+            : validator.rule(value)
+        return valid ? errors : [...errors, validator.message]
+      }, [])
       return errors
     }
 
@@ -60,8 +68,9 @@ const withValidation = config => Component => {
       return data => {
         const value = data && data.target ? data.target.value : data
 
-        config.forEach(({ field: stateKey }) => {
-          this.setState(prevState => {
+        this.setState(pState => {
+          let prevState = Object.assign({}, pState)
+          config.forEach(({ field: stateKey }) => {
             const isTarget = stateKey === key
             const updatedValue = isTarget ? value : prevState[stateKey].value
             const errors = this.checkForErrors({
@@ -78,8 +87,9 @@ const withValidation = config => Component => {
                 valid: errors.length === 0
               }
             })
-            return Object.assign({}, prevState, { [stateKey]: stateSlice })
+            prevState = Object.assign({}, prevState, { [stateKey]: stateSlice })
           })
+          return prevState
         })
       }
     }

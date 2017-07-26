@@ -4,6 +4,7 @@ const minLength = require('./validators/minLength')
 const pattern = require('./validators/pattern')
 const required = require('./validators/required')
 const sameAs = require('./validators/sameAs')
+const oneOf = require('./utils/oneOf')
 
 module.exports = {
   withValidation,
@@ -11,5 +12,6 @@ module.exports = {
   minLength,
   pattern,
   required,
-  sameAs
+  sameAs,
+  oneOf
 }

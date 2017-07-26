@@ -4,13 +4,17 @@
   "description": "Simple validation for react components, using High order component (HOC)",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/snak1t/rehoc.git"
   },
-  "keywords": ["validation", "react", "HOC"],
+  "keywords": [
+    "validation",
+    "react",
+    "HOC"
+  ],
   "author": "Ruslan Abramov <r.o.abramov@gmail.com> (https://github.com/snak1t)",
   "license": "MIT",
   "bugs": {
@@ -19,5 +23,8 @@
   "homepage": "https://github.com/snak1t/rehoc#readme",
   "dependencies": {
     "react": "15.6.1"
+  },
+  "devDependencies": {
+    "jest": "20.0.4"
   }
 }

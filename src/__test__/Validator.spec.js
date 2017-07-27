@@ -19,13 +19,11 @@ const DummyForm = ({ login, asyncField }) =>
   </form>
 
 const msg = 'Name must be John'
-const validationConfig = [
-  {
-    field: 'login',
+const validationConfig = {
+  login: {
     validators: [{ rule: name => name === 'John', message: msg }]
   },
-  {
-    field: 'asyncField',
+  asyncField: {
     validators: [
       {
         rule: (value, done) => setTimeout(() => done(value), 100),
@@ -34,7 +32,7 @@ const validationConfig = [
       }
     ]
   }
-]
+}
 
 describe('Validator', () => {
   it('should exist', () => {

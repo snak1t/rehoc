@@ -1,5 +1,5 @@
 const required = (message = 'Field is required') => ({
-  rule: value => value !== '',
+  rule: value => value.trim() !== '',
   message
 })
 

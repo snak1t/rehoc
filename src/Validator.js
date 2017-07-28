@@ -47,7 +47,7 @@ const withValidation = config => Component => {
               value
             )
           } else {
-            if (state[key].errors.includes(validator.message)) {
+            if (state[key].errors.indexOf(validator.message) !== -1) {
               return [...errors, validator.message]
             }
           }

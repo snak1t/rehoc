@@ -1,11 +1,4 @@
-const mapObject = (cb, obj) => {
-  let mappedObject = {}
-  for (let i in obj) {
-    mappedObject[i] = cb(obj[i], i, obj)
-  }
-  return mappedObject
-}
-
+const { findCircularDependency } = require('./circullarErrors')
 const findObjectDependencies = obj =>
   obj.validators.reduce(
     (deps, item) =>
@@ -13,8 +6,11 @@ const findObjectDependencies = obj =>
     []
   )
 
-const concatDependencies = (item, { dependency }) => ({
-  dependency: dependency === void 0 ? [item] : [...dependency, item]
+const concatDependencies = (item, field) => ({
+  dependency:
+    !field || typeof field.dependency === 'undefined'
+      ? [item]
+      : [...field.dependency, item]
 })
 
 const parseValidationConfig = config => {
@@ -39,6 +35,9 @@ const parseValidationConfig = config => {
     }
 
     parsedConfig[i] = Object.assign({}, parsedConfig[i], baseRules)
+  }
+  if (process.env.NODE_ENV !== 'production') {
+    findCircularDependency(parsedConfig)
   }
   return parsedConfig
 }

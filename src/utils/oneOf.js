@@ -1,4 +1,4 @@
-const oneOf = (validators = []) => {
+export default (validators = []) => {
   if (validators.length === 0) {
     return { rule: () => true, message: '' }
   }
@@ -24,5 +24,3 @@ const oneOf = (validators = []) => {
 
   return validatorObject
 }
-
-module.exports = oneOf

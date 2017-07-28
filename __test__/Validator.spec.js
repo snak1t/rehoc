@@ -1,6 +1,6 @@
-const React = require('react')
-const { shallow, mount } = require('enzyme')
-const withValidation = require('../Validator')
+import React from 'react'
+import { shallow, mount } from 'enzyme'
+import withValidation from '../src/Validator'
 
 const DummyForm = ({ login, asyncField }) =>
   <form>

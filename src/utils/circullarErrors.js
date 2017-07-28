@@ -1,5 +1,5 @@
 const id = x => x
-const createDependencyMatrix = state => {
+export const createDependencyMatrix = state => {
   const keys = Object.keys(state).sort()
 
   return keys.map(key =>
@@ -23,7 +23,7 @@ const createError = (indexes, state) => {
   )
 }
 
-const findCircularDependency = state => {
+export const findCircularDependency = state => {
   const matrix = createDependencyMatrix(state)
   const helper = (index, matrix, stack) =>
     matrix[index]
@@ -38,9 +38,4 @@ const findCircularDependency = state => {
   matrix.forEach((row, index, initialMatrix) => {
     helper(index, initialMatrix, [index])
   })
-}
-
-module.exports = {
-  createDependencyMatrix: createDependencyMatrix,
-  findCircularDependency: findCircularDependency
 }

@@ -1,8 +1,8 @@
-const email = require('../validators/email')
-const minLength = require('../validators/minLength')
-const pattern = require('../validators/pattern')
-const required = require('../validators/required')
-const sameAs = require('../validators/sameAs')
+import email from '../src/validators/email'
+import minLength from '../src/validators/minLength'
+import pattern from '../src/validators/pattern'
+import required from '../src/validators/required'
+import sameAs from '../src/validators/sameAs'
 
 describe('email validator', () => {
   it('should return true for valid email', () => {

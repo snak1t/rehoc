@@ -1,4 +1,4 @@
-const parseValidationConfig = require('../utils/parseConfig')
+import parseValidationConfig from '../src/utils/parseConfig'
 
 const rule = () => true
 

@@ -1,8 +1,7 @@
-const React = require('react')
-const parseConfig = require('./utils/parseConfig')
-const merge = require('./utils/merge')
+import React from 'react'
+import parseConfig from './utils/parseConfig'
 
-const withValidation = config => Component => {
+export default config => Component => {
   return class Validator extends React.Component {
     constructor(props) {
       super(props)
@@ -14,8 +13,8 @@ const withValidation = config => Component => {
         if (result) return
         this.setState(prevState => {
           const errors = [...prevState[key].errors, message]
-          const stateSlice = merge(prevState[key], { errors })
-          return merge(prevState, { [key]: stateSlice })
+          const stateSlice = { ...prevState[key], errors }
+          return { ...prevState, [key]: stateSlice }
         })
       }
       return rule(value, cb)
@@ -72,15 +71,16 @@ const withValidation = config => Component => {
         isTarget,
         state: state
       })
-      const stateSlice = merge(state[key], {
+      const stateSlice = {
+        ...state[key],
         value,
         errors,
         status: {
           dirty: state[key].status.dirty || isTarget,
           valid: errors.length === 0
         }
-      })
-      const updatedState = merge(state, { [key]: stateSlice })
+      }
+      const updatedState = { ...state, [key]: stateSlice }
       return !updatedState[key].dependency
         ? updatedState
         : updatedState[key].dependency.reduce(
@@ -111,21 +111,17 @@ const withValidation = config => Component => {
         if (this.isInvalidField(this.state[key])) {
           valid = false
         }
-        props[key] = merge(this.state[key], {
+        props[key] = {
+          ...this.state[key],
           handler: this.valueHandler(key)
-        })
+        }
       }
       props.valid = valid
       return props
     }
 
     render() {
-      return React.createElement(
-        Component,
-        merge(this.props, this.prepareProps())
-      )
+      return <Component {...this.props} {...this.prepareProps()} />
     }
   }
 }
-
-module.exports = withValidation

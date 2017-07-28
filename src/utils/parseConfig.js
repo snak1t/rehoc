@@ -1,4 +1,5 @@
-const { findCircularDependency } = require('./circullarErrors')
+import { findCircularDependency } from './circullarErrors'
+
 const findObjectDependencies = obj =>
   obj.validators.reduce(
     (deps, item) =>
@@ -13,7 +14,7 @@ const concatDependencies = (item, field) => ({
       : [...field.dependency, item]
 })
 
-const parseValidationConfig = config => {
+export default config => {
   let parsedConfig = {}
   for (let i in config) {
     let withFields = findObjectDependencies(config[i])
@@ -41,5 +42,3 @@ const parseValidationConfig = config => {
   }
   return parsedConfig
 }
-
-module.exports = parseValidationConfig

@@ -1,7 +1,7 @@
-const {
-  createDependencyMatrix,
-  findCircularDependency
-} = require('../utils/circullarErrors')
+import {
+  findCircularDependency,
+  createDependencyMatrix
+} from '../src/utils/circullarErrors'
 
 describe('Creating matrix', () => {
   it('should create a true/false matrix', () => {

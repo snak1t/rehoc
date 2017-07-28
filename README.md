@@ -70,7 +70,7 @@ Validator may also have additional properties:
   }
 ```
 
-**Please note** that for now we can't detect circular dependencies, please manage them for your own for now.
+**Please note** that if you create a circular dependency you'll get an error.
 
 `async` - if specified than rule function a callback function will be passed. That function must be invoked with true or false values 
 

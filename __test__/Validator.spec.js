@@ -1,6 +1,6 @@
-const React = require('react')
-const { shallow, mount } = require('enzyme')
-const withValidation = require('../Validator')
+import React from 'react'
+import { shallow, mount } from 'enzyme'
+import withValidation from '../src/Validator'
 
 const DummyForm = ({ login, asyncField }) =>
   <form>
@@ -19,13 +19,11 @@ const DummyForm = ({ login, asyncField }) =>
   </form>
 
 const msg = 'Name must be John'
-const validationConfig = [
-  {
-    field: 'login',
+const validationConfig = {
+  login: {
     validators: [{ rule: name => name === 'John', message: msg }]
   },
-  {
-    field: 'asyncField',
+  asyncField: {
     validators: [
       {
         rule: (value, done) => setTimeout(() => done(value), 100),
@@ -34,7 +32,7 @@ const validationConfig = [
       }
     ]
   }
-]
+}
 
 describe('Validator', () => {
   it('should exist', () => {

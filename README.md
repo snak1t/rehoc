@@ -19,9 +19,8 @@ For performing validation we need to create a validation config
 ```javascript
 import {minLength, email, pattern, sameAs, oneOf} from 'rehoc-validator'
 
-export const validationConfig = [
-  {
-    field: 'login',
+export const validationConfig = {
+  login: {
     validators: [
       minLength(4, 'Login must be more than 4 characters'),
       {
@@ -31,12 +30,10 @@ export const validationConfig = [
       }
     ]
   },
-  {
-    field: 'email',
+  email: {
     validators: [email()]
   },
-  {
-    field: 'password',
+  password: {
     validators: [
       oneOf([
         minLength(2),
@@ -44,16 +41,13 @@ export const validationConfig = [
       ])
     ]
   },
-  {
-    field: 'passwordConfirm',
+  passwordConfirm: {
     validators: [
       sameAs(['password'])
     ]
   }
-]
+}
 ```
-
-Validation config is just an array of objects. Each object has two properties: String `field` and Array `validators`. 
 
 Let's take a closer look of what is a concrete validator, that is a part of validators array
 
@@ -76,7 +70,7 @@ Validator may also have additional properties:
   }
 ```
 
-**Please note** that in current version, if field depends on some fields, than this fields must be specified beforehand.
+**Please note** that if you create a circular dependency you'll get an error.
 
 `async` - if specified than rule function a callback function will be passed. That function must be invoked with true or false values 
 
@@ -88,7 +82,7 @@ Validator may also have additional properties:
 }
 ```
 
-**Please note** that for now, for every form change we trigger all fields validation, if you provide an async property, then this validator will be executed *only* if your trigger change on this field, and for other fields this validation will be skipped. We plan to add additional property to check should async validation trigger for every fields change, or as default.
+**Please note** that if you provide an async property, then this validator will be executed *only* if your trigger change on this field.
 
 `initialValue` - note, that this if you provide this value, than it won't be validated for the time the form renders, and only after one of the fields triggers change, than the value will be validated.
 
@@ -99,11 +93,11 @@ Some of the validators are so common, that we provide some validators such as:
 3. required(message?: string)
 4. sameAs(fields: Array<string>, message)
 
-Each validator is a pure function that return a validation object (that was described above). You may write your own, or in case you think you find a common validation logic, please create an issue or submit a pull request.
+Each validator is a pure function that returns a validation object (that was described above). You may write your own, or in case you think you find a common validation logic, please create an issue or submit a pull request.
 
 ### Validation component
 
-We alread create `validationConfig`, now we need to connect this config to our component:
+We have already created `validationConfig`, now we need to connect this config to our component:
 
 ```javascript
 import React from "react";

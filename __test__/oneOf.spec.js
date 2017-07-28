@@ -1,4 +1,4 @@
-const oneOf = require('../utils/oneOf')
+import oneOf from '../src/utils/oneOf'
 
 const rules = [
   { rule: x => x > 3, message: 'msg1' },

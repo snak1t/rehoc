@@ -1,18 +1,11 @@
-const React = require('react')
+import React from 'react'
+import parseConfig from './utils/parseConfig'
 
-const withValidation = config => Component => {
+export default config => Component => {
   return class Validator extends React.Component {
     constructor(props) {
       super(props)
-      this.state = config.reduce((state, { field, initialValue }) => {
-        return Object.assign({}, state, {
-          [field]: {
-            value: initialValue || '',
-            errors: [],
-            status: { dirty: !!initialValue, valid: false }
-          }
-        })
-      }, {})
+      this.state = parseConfig(config)
     }
 
     performAsyncValidation(rule, message, key, value) {
@@ -20,17 +13,24 @@ const withValidation = config => Component => {
         if (result) return
         this.setState(prevState => {
           const errors = [...prevState[key].errors, message]
-          const stateSlice = Object.assign({}, prevState[key], { errors })
-          return Object.assign({}, prevState, { [key]: stateSlice })
+          const stateSlice = { ...prevState[key], errors }
+          return { ...prevState, [key]: stateSlice }
         })
       }
       return rule(value, cb)
     }
 
-    checkForErrors({ key, value, isTarget, state }) {
-      if (state[key].status.dirty === false && !isTarget) return []
-      const [{ validators }] = config.filter(confItem => confItem.field === key)
-      if (typeof validators === 'undefined') {
+    isNeedValidation(field, isTarget) {
+      // Plan to add config for eager validation
+      return field.status.dirty === false && !isTarget
+    }
+
+    collectErrors({ key, value, isTarget, state }) {
+      if (this.isNeedValidation(state[key], isTarget)) {
+        return []
+      }
+      const { validators } = config[key]
+      if (validators === void 0) {
         return []
       }
       const errors = validators.reduce((
@@ -46,7 +46,7 @@ const withValidation = config => Component => {
               value
             )
           } else {
-            if (state[key].errors.includes(validator.message)) {
+            if (state[key].errors.indexOf(validator.message) !== -1) {
               return [...errors, validator.message]
             }
           }
@@ -64,32 +64,38 @@ const withValidation = config => Component => {
       return errors
     }
 
+    updateStateValue(key, value, isTarget, state) {
+      const errors = this.collectErrors({
+        key,
+        value,
+        isTarget,
+        state: state
+      })
+      const stateSlice = {
+        ...state[key],
+        value,
+        errors,
+        status: {
+          dirty: state[key].status.dirty || isTarget,
+          valid: errors.length === 0
+        }
+      }
+      const updatedState = { ...state, [key]: stateSlice }
+      return !updatedState[key].dependency
+        ? updatedState
+        : updatedState[key].dependency.reduce(
+            (state, key) =>
+              this.updateStateValue(key, state[key].value, false, state),
+            updatedState
+          )
+    }
+
     valueHandler(key) {
       return data => {
         const value = data && data.target ? data.target.value : data
 
         this.setState(pState => {
-          let prevState = Object.assign({}, pState)
-          config.forEach(({ field: stateKey }) => {
-            const isTarget = stateKey === key
-            const updatedValue = isTarget ? value : prevState[stateKey].value
-            const errors = this.checkForErrors({
-              key: stateKey,
-              value: updatedValue,
-              isTarget,
-              state: prevState
-            })
-            const stateSlice = Object.assign({}, prevState[stateKey], {
-              value: updatedValue,
-              errors,
-              status: {
-                dirty: prevState[stateKey].status.dirty || isTarget,
-                valid: errors.length === 0
-              }
-            })
-            prevState = Object.assign({}, prevState, { [stateKey]: stateSlice })
-          })
-          return prevState
+          return this.updateStateValue(key, value, true, pState)
         })
       }
     }
@@ -105,21 +111,17 @@ const withValidation = config => Component => {
         if (this.isInvalidField(this.state[key])) {
           valid = false
         }
-        props[key] = Object.assign({}, this.state[key], {
+        props[key] = {
+          ...this.state[key],
           handler: this.valueHandler(key)
-        })
+        }
       }
       props.valid = valid
       return props
     }
 
     render() {
-      return React.createElement(
-        Component,
-        Object.assign({}, this.props, this.prepareProps())
-      )
+      return <Component {...this.props} {...this.prepareProps()} />
     }
   }
 }
-
-module.exports = withValidation

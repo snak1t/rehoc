@@ -21,5 +21,6 @@ Object {
     "value": "",
   },
   "valid": false,
+  "validateAll": [Function],
 }
 `;

@@ -1,12 +1,19 @@
 import React from 'react'
 import parseConfig from './utils/parseConfig'
 
-export default config => Component => {
+export default (config, options = { eager: false }) => Component => {
   return class Validator extends React.Component {
     constructor(props) {
       super(props)
       this.state = parseConfig(config)
       this.handlers = this.prepareHandlers(this.state)
+      this.validateAll = this.validateAll.bind(this)
+    }
+
+    componentDidMount() {
+      if (options.eager) {
+        this.validateAll()
+      }
     }
 
     prepareHandlers(state) {
@@ -15,6 +22,12 @@ export default config => Component => {
         handlers[i] = this.valueHandler(i)
       }
       return handlers
+    }
+
+    validateAll() {
+      for (let key in this.state) {
+        this.handlers[key](this.state[key].value)
+      }
     }
 
     performAsyncValidation(rule, message, key, value) {
@@ -126,6 +139,7 @@ export default config => Component => {
         }
       }
       props.valid = valid
+      props.validateAll = this.validateAll
       return props
     }
 

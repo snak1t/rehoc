@@ -6,6 +6,15 @@ export default config => Component => {
     constructor(props) {
       super(props)
       this.state = parseConfig(config)
+      this.handlers = this.prepareHandlers(this.state)
+    }
+
+    prepareHandlers(state) {
+      let handlers = {}
+      for (let i in state) {
+        handlers[i] = this.valueHandler(i)
+      }
+      return handlers
     }
 
     performAsyncValidation(rule, message, key, value) {
@@ -113,7 +122,7 @@ export default config => Component => {
         }
         props[key] = {
           ...this.state[key],
-          handler: this.valueHandler(key)
+          handler: this.handlers[key]
         }
       }
       props.valid = valid

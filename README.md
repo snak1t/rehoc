@@ -18,7 +18,7 @@ Basic usage
 ### Validation config
 For performing validation we need to create a validation config
 ```javascript
-import {minLength, email, pattern, sameAs, oneOf} from 'rehoc-validator'
+import {minLength, email, pattern, sameAs, all } from 'rehoc-validator'
 
 export const validationConfig = {
   login: {
@@ -37,7 +37,7 @@ export const validationConfig = {
   },
   password: {
     validators: [
-      oneOf([
+      all([
         minLength(2),
         pattern(/^[A-Z]/, 'Password must start with capital letter only')
       ])

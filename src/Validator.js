@@ -104,20 +104,33 @@ export default (config: Config, options: Options = { eager: false }) => (
     }
 
     performAsyncValidation(
-      rule: RuleFunction,
-      message: string,
+      validator: ValidatorItem,
       key: string,
-      value: AcceptedValue
+      value: AcceptedValue,
+      state: State
     ) {
-      const cb = result => {
+      const passedCallback = result => {
         if (result) return;
-        this.setState(prevState => {
-          const errors = [...prevState[key].errors, message];
-          const stateSlice = { ...prevState[key], errors };
+        return this.setState(prevState => {
+          const stateSlice = {
+            ...prevState[key],
+            errors: [validator.message],
+            status: {
+              dirty: true,
+              valid: false
+            }
+          };
           return { ...prevState, [key]: stateSlice };
         });
       };
-      return rule(value, cb);
+
+      return validator.withFields
+        ? validator.rule(
+            value,
+            ...validator.withFields.map(key => state[key].value),
+            passedCallback
+          )
+        : validator.rule(value, passedCallback);
     }
 
     isNeedValidation(field: InputType, isTarget: boolean) {
@@ -129,26 +142,19 @@ export default (config: Config, options: Options = { eager: false }) => (
       key,
       value,
       isTarget,
-      errors,
       state
     }: {
       validator: ValidatorItem,
       key: string,
       value: AcceptedValue,
       isTarget: boolean,
-      errors: Array<string>,
       state: State
     }) {
-      if (!isTarget && state[key].errors.indexOf(validator.message) !== -1) {
-        return [...errors, validator.message];
+      if (!isTarget) {
+        return false;
       }
-      this.performAsyncValidation(
-        validator.rule,
-        validator.message,
-        key,
-        value
-      );
-      return errors;
+      this.performAsyncValidation(validator, key, value, state);
+      return false;
     }
 
     handleSyncValidation({
@@ -161,16 +167,14 @@ export default (config: Config, options: Options = { eager: false }) => (
       validator: ValidatorItem,
       key: string,
       value: AcceptedValue,
-      errors: Array<string>,
       state: State
-    }): Array<string> {
-      const valid: boolean = validator.withFields
+    }): boolean {
+      return validator.withFields
         ? validator.rule(
             value,
             ...validator.withFields.map(key => state[key].value)
           )
         : validator.rule(value);
-      return valid ? errors : [...errors, validator.message];
     }
 
     collectErrors({
@@ -194,30 +198,23 @@ export default (config: Config, options: Options = { eager: false }) => (
         return [];
       }
 
-      const errors = validators.reduce(
-        (
-          errors,
-          validator // Never perform destructure of validator (getter oneOf)
-        ) =>
+      const failedValidator = validators.find(
+        validator =>
           validator.async
             ? this.handleAsyncValidation({
                 validator,
                 key,
                 value,
                 isTarget,
-                errors,
                 state
               })
-            : this.handleSyncValidation({
-                validator,
-                key,
-                value,
-                errors,
-                state
-              }),
-        []
+            : !this.handleSyncValidation({ validator, key, value, state })
       );
-      return errors;
+      return failedValidator
+        ? failedValidator.multiple
+          ? [...failedValidator.message]
+          : [failedValidator.message]
+        : [];
     }
 
     updateStateValue(
@@ -268,9 +265,10 @@ export default (config: Config, options: Options = { eager: false }) => (
             ? ((data.target.value: any): AcceptedValue)
             : data;
 
-        this.setState((previousState: State) =>
-          this.updateStateValue(key, value, true, previousState)
-        );
+        this.setState((previousState: State) => {
+          const st = this.updateStateValue(key, value, true, previousState);
+          return st;
+        });
       };
     }
 

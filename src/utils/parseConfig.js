@@ -36,7 +36,7 @@ export default config => {
     const value = config[i].initialValue;
 
     const baseRules = {
-      value: value || '',
+      value: value !== void 0 ? value : '',
       status: {
         dirty: false,
         valid: !isRequiredField && isEmpty(value)

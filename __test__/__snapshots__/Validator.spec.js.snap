@@ -5,6 +5,7 @@ Object {
   "asyncField": Object {
     "errors": Array [],
     "handler": [Function],
+    "required": true,
     "status": Object {
       "dirty": false,
       "valid": false,
@@ -14,6 +15,7 @@ Object {
   "login": Object {
     "errors": Array [],
     "handler": [Function],
+    "required": true,
     "status": Object {
       "dirty": false,
       "valid": false,

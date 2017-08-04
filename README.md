@@ -1,15 +1,16 @@
-React Forms Validation (rehoc-validator)
+React Forms Validation (rehoc-validator) (WIP)
 ======
 [![Edit Rehoc Validator Example](https://img.shields.io/badge/CodeSandbox-demo-blue.svg)](https://codesandbox.io/s/qxNYvy53)
 [![npm version](https://img.shields.io/npm/v/rehoc-validator.svg)](https://www.npmjs.com/package/rehoc-validator)
 
 Rehoc-validator is a javascript library for React, for easily perform forms validation. It's a validation data layer that only provides information about validation state of each value. We don't provide validation input components etc. It's for you how to manage this data.
+Currently rehoc-validator is in WIP stage.
 
 ### Installation
 Use your favaourite package manager
 ```bash
-npm install --save-dev rehoc-validator
-yarn add --dev rehoc-validator
+npm install --save rehoc-validator
+yarn add rehoc-validator
 ```
 
 Basic usage
@@ -31,7 +32,8 @@ export const validationConfig = {
     ]
   },
   email: {
-    validators: [email()]
+    validators: [email()],
+    required: false
   },
   password: {
     validators: [
@@ -49,7 +51,7 @@ export const validationConfig = {
 }
 ```
 
-Let's take a closer look of what is a concrete validator, that is a part of validators array
+Let's see what is a Validator object
 
 ### Validator
 Each validator contains of at least two fields: rule and message.
@@ -70,9 +72,9 @@ Validator may also have additional properties:
   }
 ```
 
-**Please note** that if you create a circular dependency you'll get an error.
+**Please note** that we check for circular dependency only in development mode and throw you an error. It's a bad decision to create a circular dependency. Currently `withFields` not working with async validations
 
-`async` - if specified than rule function a callback function will be passed. That function must be invoked with true or false values 
+`async` - if specified than to `rule` function a callback function will be passed. That function must be invoked with true or false values 
 
 ```javascript
 {
@@ -84,7 +86,9 @@ Validator may also have additional properties:
 
 **Please note** that if you provide an async property, then this validator will be executed *only* if your trigger change on this field.
 
-`initialValue` - note, that this if you provide this value, than it won't be validated for the time the form renders, and only after one of the fields triggers change, than the value will be validated.
+`initialValue` - initial value for the field, the validation of this field will be triggered as forms render depsite the fact whether field is required or not. In future releases a new option will be added to override this behavior.
+
+`required` - If this field is required to validate the whole form. Some fields may not be required but still you may want to add some validation logic into them. By default if you don't provide required field, each field will be explicitly set to required. And only if you pass `required: false` than it will be excluded from the list of required fields.
 
 Some of the validators are so common, that we provide some validators such as:
 
@@ -94,6 +98,20 @@ Some of the validators are so common, that we provide some validators such as:
 4. sameAs(fields: Array<string>, message)
 
 Each validator is a pure function that returns a validation object (that was described above). You may write your own, or in case you think you find a common validation logic, please create an issue or submit a pull request.
+
+### Validation options
+
+Second parameter for validation is validation options. It's not a required parameter.
+
+List of all options with defaults values
+```javascript
+ const validationOptions = {
+   eager: false
+ }
+```
+
+`eager` - if set to `true` than each validator will be triggered for the first time forms renders.
+
 
 ### Validation component
 
@@ -110,7 +128,8 @@ const SimpleForm = ({
   valid,
   email,
   password,
-  passwordConfirm
+  passwordConfirm,
+  validateAll
 }) =>
   <div>
     <h2>
@@ -150,6 +169,7 @@ const SimpleForm = ({
         onChange={passwordConfirm.handler}
       />
       <pre>{JSON.stringify(passwordConfirm)}</pre>
+      <button onClick={validateAll}>Validate all values</button>
       <button type="submit" disabled={!valid}>
         Submit form
       </button>
@@ -162,7 +182,8 @@ export default withValidation(validationConfig)(SimpleForm);
 Each field that was described in validation config is passed down as objects with following properties:
 
 1. `value` - fields value;
-2. `errors` - an array of errors messages
+2. `errors` - Array<string> an array of errors messages
 3. `status` - Object<{dirty: boolean, valid: boolean}>
+4. `required` - boolean 
 
 That's all.

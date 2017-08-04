@@ -1,6 +1,6 @@
-import parseValidationConfig from '../src/utils/parseConfig'
+import parseValidationConfig from '../src/utils/parseConfig';
 
-const rule = () => true
+const rule = () => true;
 
 const validationConfig = {
   login: {
@@ -8,7 +8,8 @@ const validationConfig = {
     initialValue: 'John'
   },
   email: {
-    validators: [{ rule, message: 'email' }]
+    validators: [{ rule, message: 'email' }],
+    required: false
   },
   password: {
     validators: [
@@ -22,13 +23,14 @@ const validationConfig = {
       { rule, message: '6', withFields: ['password'] }
     ]
   }
-}
+};
 
 const expectedOutput = {
   login: {
     value: 'John',
     errors: [],
     dependency: ['password'],
+    required: true,
     status: {
       dirty: false,
       valid: false
@@ -38,14 +40,16 @@ const expectedOutput = {
     value: '',
     errors: [],
     dependency: ['password'],
+    required: false,
     status: {
       dirty: false,
-      valid: false
+      valid: true
     }
   },
   passwordConfirm: {
     value: '',
     errors: [],
+    required: true,
     status: {
       dirty: false,
       valid: false
@@ -55,23 +59,24 @@ const expectedOutput = {
     value: '',
     errors: [],
     dependency: ['passwordConfirm'],
+    required: true,
     status: {
       dirty: false,
       valid: false
     }
   }
-}
+};
 
 describe('Parsing validation config', () => {
   it('function should exist', () => {
-    expect(parseValidationConfig).toBeDefined()
-  })
+    expect(parseValidationConfig).toBeDefined();
+  });
 
   it('should accept a config as a paramater and return an object', () => {
-    expect(parseValidationConfig(validationConfig)).toBeInstanceOf(Object)
-  })
+    expect(parseValidationConfig(validationConfig)).toBeInstanceOf(Object);
+  });
 
   it('should parse a config according to rules', () => {
-    expect(parseValidationConfig(validationConfig)).toEqual(expectedOutput)
-  })
-})
+    expect(parseValidationConfig(validationConfig)).toEqual(expectedOutput);
+  });
+});

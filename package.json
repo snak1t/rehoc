@@ -1,6 +1,6 @@
 {
   "name": "rehoc-validator",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Simple validation for react components, using High order component (HOC)",
   "main": "lib/index.js",
   "scripts": {

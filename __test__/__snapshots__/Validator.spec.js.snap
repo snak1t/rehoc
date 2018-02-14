@@ -3,6 +3,7 @@
 exports[`Validator should exist 1`] = `
 Object {
   "asyncField": Object {
+    "dependency": Array [],
     "errors": Array [],
     "handler": [Function],
     "required": true,
@@ -13,6 +14,7 @@ Object {
     "value": "",
   },
   "login": Object {
+    "dependency": Array [],
     "errors": Array [],
     "handler": [Function],
     "required": true,

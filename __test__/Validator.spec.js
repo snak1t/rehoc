@@ -53,24 +53,20 @@ describe('Validator', () => {
     it('should mark a field as dirty if changed', async () => {
         const input = component.find('.loginInput');
         input.simulate('change', { target: { value: 'John' } });
-        await waiter();
         expect(testForm.props().login.status.dirty).toEqual(true);
     });
 
     it('should mark a field as valid if provided with valid value', async () => {
         const input = component.find('.loginInput');
         input.simulate('change', { target: { value: 'Sam' } });
-        await waiter();
         expect(testForm.props().login.status.valid).toEqual(false);
         input.simulate('change', { target: { value: 'John' } });
-        await waiter();
         expect(testForm.props().login.status.valid).toEqual(true);
     });
 
     it('should provide an error array if specified value is incorrect', async () => {
         const input = component.find('.loginInput');
         input.simulate('change', { target: { value: 'Sam' } });
-        await waiter();
         expect(testForm.props().login.status.valid).toEqual(false);
         expect(testForm.props().login.errors).toBeInstanceOf(Array);
         expect(testForm.props().login.errors.length).toEqual(1);

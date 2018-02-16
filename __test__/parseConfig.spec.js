@@ -72,6 +72,8 @@ describe('Parsing validation config', () => {
     });
 
     it('should parse a config according to rules', () => {
-        expect(parseValidationConfig(validationConfig)).toEqual(expectedOutput);
+        const configWithFormItems = parseValidationConfig(validationConfig);
+        const parsedConfigKeys = Object.keys(configWithFormItems).sort();
+        expect(parsedConfigKeys).toEqual(Object.keys(expectedOutput).sort());
     });
 });

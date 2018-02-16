@@ -1,8 +1,10 @@
-import React from 'react';
 import isEmpty from 'is-empty';
+import React from 'react';
 import parseConfig from './utils/parseConfig';
 import { mapObject } from './utils/mapObject';
 import * as FormHelper from './utils/form-helpers';
+
+const filterPromises = a => a.filter(p => p instanceof Promise);
 
 export class Validator extends React.Component {
     static defaultProps = {
@@ -41,18 +43,10 @@ export class Validator extends React.Component {
         });
     }
 
-    updateStateValue = async ({ key, value, isTarget, previousState }) => {
-        const errors = await FormHelper.performValidation(
-            previousState,
-            key,
-            value,
-            this.props.config[key].validators,
-            isTarget
-        );
-        const stateSlice = previousState[key];
+    setErrorsAndStatus({ stateSlice, isTarget, value, errors }) {
         const dirty = FormHelper.isDirty(stateSlice, isTarget);
         const valid = FormHelper.isValid(stateSlice, value, errors, dirty);
-        const updatedStateSlice = {
+        return {
             ...stateSlice,
             errors,
             value,
@@ -61,18 +55,32 @@ export class Validator extends React.Component {
                 valid
             }
         };
+    }
+
+    updateStateValue = ({ key, value, isTarget, previousState }) => {
+        const [errors, asyncErrors] = FormHelper.performValidation(
+            previousState,
+            key,
+            value,
+            this.props.config[key].validators,
+            isTarget
+        );
+        const stateSlice = previousState[key];
+        const updatedStateSlice = this.setErrorsAndStatus({ stateSlice, isTarget, value, errors });
         const updatedState = { ...previousState, [key]: updatedStateSlice };
         return !updatedState[key].dependency
-            ? updatedState
+            ? [updatedState, asyncErrors]
             : updatedState[key].dependency.reduce(
-                  (state, key) =>
-                      this.updateStateValue({
+                  ([state, asyncErrors], key) => {
+                      const [updatedState, aE] = this.updateStateValue({
                           key,
                           value: state[key].value,
                           isTarget: false,
                           previousState: state
-                      }),
-                  updatedState
+                      });
+                      return [updatedState, [...asyncErrors, aE]];
+                  },
+                  [updatedState, asyncErrors]
               );
     };
 
@@ -84,7 +92,8 @@ export class Validator extends React.Component {
      */
     valueHandler(key) {
         let currentPromise = 0;
-        return async data => {
+        const isTarget = true;
+        return data => {
             const value = data && data.target && data.target.value !== undefined ? data.target.value : data;
             this.setState(previousState => {
                 const updatedStateSlice = {
@@ -97,9 +106,18 @@ export class Validator extends React.Component {
                 };
             });
             const innerPromise = ++currentPromise;
-            const newState = await this.updateStateValue({ key, value, isTarget: true, previousState: this.state });
-            if (innerPromise === currentPromise) {
-                return this.setState(prevState => FormHelper.mergeWithoudField(prevState, newState));
+            const [newState, asyncErrors] = this.updateStateValue({ key, value, isTarget, previousState: this.state });
+            this.setState(prevState => FormHelper.mergeWithoudField(prevState, newState));
+            const flattenAsyncErrors = filterPromises(asyncErrors);
+            if (innerPromise === currentPromise && flattenAsyncErrors.length !== 0) {
+                Promise.all(asyncErrors).catch(errors => {
+                    this.setState(prevState => {
+                        const stateSlice = prevState[key];
+                        const updatedStateSlice = this.setErrorsAndStatus({ stateSlice, isTarget, value, errors });
+                        const updatedState = { ...prevState, [key]: updatedStateSlice };
+                        return FormHelper.mergeWithoudField(prevState, updatedState);
+                    });
+                });
             }
         };
     }
@@ -132,6 +150,7 @@ export class Validator extends React.Component {
         return this.props.render(this.prepareProps());
     }
 }
+
 export const withValidation = (config, options = { eager: false }) => Component => {
     const HelperComponent = props => (
         <Validator config={config} options={options} render={args => <Component {...props} {...args} />} />

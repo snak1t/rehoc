@@ -20,6 +20,7 @@ export class FormItem {
             valid: !this.required && isEmpty(this.initialValue)
         };
         this.errors = [];
+        [this.validators, this.asyncValidators] = this.setValidators(config.validators);
         return this;
     }
 
@@ -33,5 +34,15 @@ export class FormItem {
 
     addDependency(dependency) {
         this.dependency = [...this.dependency, dependency];
+    }
+
+    setValidators(validators) {
+        const asyncValidators = [];
+        const syncValidators = [];
+        for (let index = 0; index < validators.length; index++) {
+            const element = validators[index];
+            (element.async === true ? asyncValidators : syncValidators).push(element);
+        }
+        return [syncValidators, asyncValidators];
     }
 }

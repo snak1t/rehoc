@@ -14,11 +14,14 @@ const handleSyncValidation = (v, otherFields) => ([value, errors]) => {
     return [value, result ? errors : [...errors, v.message]];
 };
 
-const skipValidation = (field, isTarget, value, validators) =>
-    (field.status.dirty === false && !isTarget) || (!field.required && isEmpty(value)) || validators === void 0;
+const skipValidation = (field, isTarget, value) =>
+    (field.status.dirty === false && !isTarget) ||
+    (!field.required && isEmpty(value)) ||
+    [...field.validators, ...field.asyncValidators].length === 0;
 
-export const performValidation = (state, key, value, validators, isTarget) => {
-    if (skipValidation(state[key], isTarget, value, validators)) {
+export const performValidation = ({ state, valueDescriptor }) => {
+    const stateField = state[valueDescriptor.key];
+    if (skipValidation(stateField, valueDescriptor.isTarget, valueDescriptor.value)) {
         return [[], []];
     }
 
@@ -30,19 +33,19 @@ export const performValidation = (state, key, value, validators, isTarget) => {
         return (v.async ? handleAsyncValidation : handleSyncValidation)(v, getOtherFields(v));
     };
 
-    const [, errors] = state[key].validators
+    const [, errors] = stateField.validators
         .map(checkValidator)
-        .reduce((acc, validator) => validator(acc), [value, []]);
+        .reduce((acc, validator) => validator(acc), [valueDescriptor.value, []]);
 
     const promise =
-        state[key].asyncValidators.length !== 0 && errors.length === 0
-            ? state[key].asyncValidators.map(checkValidator).map(v => v(value))
+        stateField.asyncValidators.length !== 0 && errors.length === 0
+            ? stateField.asyncValidators.map(checkValidator).map(v => v(valueDescriptor.value))
             : [];
 
     return [errors, promise];
 };
 
-export const mergeWithoudField = (objWithValues, objWOValues) => {
+export const mergeWithoutField = (objWithValues, objWOValues) => {
     const resultedObject = {};
     for (const key of Object.keys(objWOValues)) {
         resultedObject[key] = {

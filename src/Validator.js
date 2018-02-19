@@ -17,7 +17,6 @@ export class Validator extends React.Component {
         super(props);
         this.state = parseConfig(this.props.config);
         this.handlers = this.prepareHandlers(this.state);
-        this.validateAll = this.validateAll.bind(this);
     }
 
     componentDidMount() {
@@ -31,25 +30,26 @@ export class Validator extends React.Component {
         return mapObject(state, (_, key) => this.valueHandler(key));
     }
 
-    validateAll() {
+    validateAll = () => {
         mapObject(this.handlers, (handler, key) => handler(this.state[key].value));
-    }
+    };
 
     validateNotEmptyValues() {
         mapObject(this.handlers, (handler, key) => {
-            if (!isEmpty(this.state[key].value)) {
-                handler(this.state[key].value);
+            const value = this.state[key].value;
+            if (!isEmpty(value)) {
+                handler(value);
             }
         });
     }
 
-    setErrorsAndStatus({ stateSlice, isTarget, value, errors }) {
-        const dirty = FormHelper.isDirty(stateSlice, isTarget);
-        const valid = FormHelper.isValid(stateSlice, value, errors, dirty);
+    setErrorsAndStatus({ stateSlice, valueDescriptor, errors }) {
+        const dirty = FormHelper.isDirty(stateSlice, valueDescriptor.isTarget);
+        const valid = FormHelper.isValid(stateSlice, valueDescriptor.value, errors, dirty);
         return {
             ...stateSlice,
             errors,
-            value,
+            value: valueDescriptor.value,
             status: {
                 dirty,
                 valid
@@ -57,32 +57,36 @@ export class Validator extends React.Component {
         };
     }
 
-    updateStateValue = ({ key, value, isTarget, previousState }) => {
-        const [errors, asyncErrors] = FormHelper.performValidation(
-            previousState,
-            key,
-            value,
-            this.props.config[key].validators,
-            isTarget
-        );
-        const stateSlice = previousState[key];
-        const updatedStateSlice = this.setErrorsAndStatus({ stateSlice, isTarget, value, errors });
-        const updatedState = { ...previousState, [key]: updatedStateSlice };
-        return !updatedState[key].dependency
+    updateStateValue = ({ valueDescriptor, previousState }) => {
+        const [errors, asyncErrors] = FormHelper.performValidation({
+            state: previousState,
+            valueDescriptor
+        });
+        const updatedState = this.updateStateSlice(previousState, valueDescriptor, errors);
+        return !updatedState[valueDescriptor.key].dependency
             ? [updatedState, asyncErrors]
-            : updatedState[key].dependency.reduce(
+            : updatedState[valueDescriptor.key].dependency.reduce(
                   ([state, asyncErrors], key) => {
-                      const [updatedState, aE] = this.updateStateValue({
-                          key,
-                          value: state[key].value,
-                          isTarget: false,
+                      const [updatedState, _asyncErrors] = this.updateStateValue({
+                          valueDescriptor: {
+                              key,
+                              value: state[key].value,
+                              isTarget: false
+                          },
                           previousState: state
                       });
-                      return [updatedState, [...asyncErrors, aE]];
+                      return [updatedState, [...asyncErrors, _asyncErrors]];
                   },
                   [updatedState, asyncErrors]
               );
     };
+
+    updateStateSlice(previousState, valueDescriptor, errors) {
+        const stateSlice = previousState[valueDescriptor.key];
+        const updatedStateSlice = this.setErrorsAndStatus({ stateSlice, valueDescriptor, errors });
+        const updatedState = { ...previousState, [valueDescriptor.key]: updatedStateSlice };
+        return updatedState;
+    }
 
     /**
      * Creates functions bound to a specific parts of state keys
@@ -92,9 +96,9 @@ export class Validator extends React.Component {
      */
     valueHandler(key) {
         let currentPromise = 0;
-        const isTarget = true;
         return data => {
-            const value = data && data.target && data.target.value !== undefined ? data.target.value : data;
+            const value = this.getRawOrEventValue(data);
+            const valueDescriptor = { value, isTarget: true, key };
             this.setState(previousState => {
                 const updatedStateSlice = {
                     ...previousState[key],
@@ -106,20 +110,26 @@ export class Validator extends React.Component {
                 };
             });
             const innerPromise = ++currentPromise;
-            const [newState, asyncErrors] = this.updateStateValue({ key, value, isTarget, previousState: this.state });
-            this.setState(prevState => FormHelper.mergeWithoudField(prevState, newState));
-            const flattenAsyncErrors = filterPromises(asyncErrors);
-            if (innerPromise === currentPromise && flattenAsyncErrors.length !== 0) {
-                Promise.all(asyncErrors).catch(errors => {
-                    this.setState(prevState => {
-                        const stateSlice = prevState[key];
-                        const updatedStateSlice = this.setErrorsAndStatus({ stateSlice, isTarget, value, errors });
-                        const updatedState = { ...prevState, [key]: updatedStateSlice };
-                        return FormHelper.mergeWithoudField(prevState, updatedState);
-                    });
-                });
+            const [newState, asyncErrors] = this.updateStateValue({ valueDescriptor, previousState: this.state });
+            this.setState(prevState => FormHelper.mergeWithoutField(prevState, newState));
+            const filteredAsyncErrors = filterPromises(asyncErrors);
+            if (innerPromise === currentPromise && filteredAsyncErrors.length !== 0) {
+                this.runAsync(asyncErrors, valueDescriptor);
             }
         };
+    }
+
+    getRawOrEventValue(data) {
+        return data && data.target && data.target.value !== undefined ? data.target.value : data;
+    }
+
+    runAsync(asyncErrors, valueDescriptor) {
+        Promise.all(asyncErrors).catch(errors => {
+            this.setState(prevState => {
+                const updatedState = this.updateStateSlice(prevState, valueDescriptor, errors);
+                return FormHelper.mergeWithoutField(prevState, updatedState);
+            });
+        });
     }
 
     /**
@@ -137,7 +147,7 @@ export class Validator extends React.Component {
      *
      * @returns {Output}
      */
-    prepareProps() {
+    collectFormValues() {
         const [values, valid] = FormHelper.mergeFieldsWithHandlers(this.state, this.handlers);
         return {
             ...values,
@@ -147,7 +157,7 @@ export class Validator extends React.Component {
     }
 
     render() {
-        return this.props.render(this.prepareProps());
+        return this.props.render(this.collectFormValues());
     }
 }
 

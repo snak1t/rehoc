@@ -1,4 +1,11 @@
-import isEmpty from 'is-empty';
+//#region  Import Statements
+import lensPath from 'ramda/src/lensPath';
+import set from 'ramda/src/set';
+import filter from 'ramda/src/filter';
+import isEmpty from 'ramda/src/isEmpty';
+import mapObjIndexed from 'ramda/src/mapObjIndexed';
+//#endregion
+
 export const isDirty = (stateSlice, isTarget) => stateSlice.status.dirty || isTarget;
 export const isValid = (stateSlice, value, errors, dirty) =>
     !(!stateSlice.required && isEmpty(value)) ? errors.length === 0 && dirty : true;
@@ -45,29 +52,30 @@ export const performValidation = ({ state, valueDescriptor }) => {
     return [errors, promise];
 };
 
-export const mergeWithoutField = (objWithValues, objWOValues) => {
-    const resultedObject = {};
-    for (const key of Object.keys(objWOValues)) {
-        resultedObject[key] = {
+export const mergeWithoutField = (objWithValues, objWOValues) =>
+    mapObjIndexed(
+        (element, key) => ({
             ...objWithValues[key],
-            ...objWOValues[key],
+            ...element,
             value: objWithValues[key].value
-        };
-    }
-    return resultedObject;
-};
+        }),
+        objWOValues
+    );
 
 export const mergeFieldsWithHandlers = (state, handlers) => {
     let valid = true;
-    let values = {};
-    for (let [key, value] of Object.entries(state)) {
+    const values = mapObjIndexed((value, key) => {
         if (!value.status.valid) {
             valid = false;
         }
-        values[key] = {
+        return {
             ...value,
             handler: handlers[key]
         };
-    }
+    }, state);
     return [values, valid];
 };
+
+export const filterPromises = filter(p => p instanceof Promise);
+
+export const updateValue = (path, value) => set(lensPath(path), value);

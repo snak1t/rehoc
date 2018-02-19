@@ -1,4 +1,4 @@
-import isEmpty from 'is-empty';
+import isEmpty from 'ramda/src/isEmpty';
 
 export class FormItem {
     constructor(config) {
@@ -17,10 +17,17 @@ export class FormItem {
         this.value = config.initialValue !== void 0 ? config.initialValue : '';
         this.status = {
             dirty: false,
-            valid: !this.required && isEmpty(this.initialValue)
+            valid: !this.required && isEmpty(this.value)
         };
         this.errors = [];
         [this.validators, this.asyncValidators] = this.setValidators(config.validators);
+        return this;
+    }
+
+    concat(formItem) {
+        this.status = formItem.status;
+        this.errors = formItem.errors;
+        this.value = formItem.value;
         return this;
     }
 

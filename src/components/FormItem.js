@@ -24,8 +24,8 @@ export class FormItem {
         return this;
     }
 
-    findObjectDependencies({ validators }) {
-        return validators.reduce(
+    findObjectDependencies() {
+        return [...this.validators, ...this.asyncValidators].reduce(
             (dependencies, validator) =>
                 validator.withFields === void 0 ? dependencies : [...dependencies, ...validator.withFields],
             []

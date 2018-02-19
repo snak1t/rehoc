@@ -1,10 +1,12 @@
-import isEmpty from 'is-empty';
+//#region Import statements
 import React from 'react';
 import * as ConfigUtility from './utils/parseConfig';
-import { mapObject } from './utils/mapObject';
 import * as FormHelper from './utils/form-helpers';
-
-const filterPromises = a => a.filter(p => p instanceof Promise);
+import mapObjIndexed from 'ramda/src/mapObjIndexed';
+import forEachObjIndexed from 'ramda/src/forEachObjIndexed';
+import pathOr from 'ramda/src/pathOr';
+import isEmpty from 'ramda/src/isEmpty';
+//#endregion
 
 export class Validator extends React.Component {
     static defaultProps = {
@@ -15,8 +17,10 @@ export class Validator extends React.Component {
 
     constructor(props) {
         super(props);
-        this.state = ConfigUtility.parseConfig(this.props.config);
-        this.handlers = this.prepareHandlers(this.state);
+        this.state = {
+            config: ConfigUtility.parseConfig(this.props.config)
+        };
+        this.handlers = this.prepareHandlers(this.state.config);
     }
 
     componentDidMount() {
@@ -26,34 +30,40 @@ export class Validator extends React.Component {
         this.validateNotEmptyValues();
     }
 
-    prepareHandlers(state) {
-        return mapObject(state, (_, key) => this.valueHandler(key));
+    componentWillReceiveProps(nextProps) {
+        if (nextProps.config !== this.props.config) {
+            this.setState(prevState => {
+                const newState = ConfigUtility.parseConfig(nextProps.config);
+                this.handlers = this.prepareHandlers(newState);
+                return { config: ConfigUtility.mergeConfigs(newState, prevState) };
+            });
+        }
     }
 
+    prepareHandlers = mapObjIndexed((_, key) => this.valueHandler(key));
+
     validateAll = () => {
-        mapObject(this.handlers, (handler, key) => handler(this.state[key].value));
+        forEachObjIndexed((handler, key) => handler(this.state.config[key].value), this.handlers);
     };
 
     validateNotEmptyValues() {
-        mapObject(this.handlers, (handler, key) => {
-            const value = this.state[key].value;
+        forEachObjIndexed((handler, key) => {
+            const value = this.state.config[key].value;
             if (!isEmpty(value)) {
                 handler(value);
             }
-        });
+        }, this.handlers);
     }
 
     setErrorsAndStatus({ stateSlice, valueDescriptor, errors }) {
         const dirty = FormHelper.isDirty(stateSlice, valueDescriptor.isTarget);
         const valid = FormHelper.isValid(stateSlice, valueDescriptor.value, errors, dirty);
+        const status = { dirty, valid };
         return {
             ...stateSlice,
             errors,
             value: valueDescriptor.value,
-            status: {
-                dirty,
-                valid
-            }
+            status
         };
     }
 
@@ -63,29 +73,28 @@ export class Validator extends React.Component {
             valueDescriptor
         });
         const updatedState = this.updateStateSlice(previousState, valueDescriptor, errors);
-        return !updatedState[valueDescriptor.key].dependency
+        const dependencies = updatedState[valueDescriptor.key].dependency;
+        return !dependencies
             ? [updatedState, asyncErrors]
-            : updatedState[valueDescriptor.key].dependency.reduce(
-                  ([state, asyncErrors], key) => {
-                      const [updatedState, _asyncErrors] = this.updateStateValue({
-                          valueDescriptor: {
-                              key,
-                              value: state[key].value,
-                              isTarget: false
-                          },
-                          previousState: state
-                      });
-                      return [updatedState, [...asyncErrors, _asyncErrors]];
-                  },
-                  [updatedState, asyncErrors]
-              );
+            : dependencies.reduce(this.stateReducer, [updatedState, asyncErrors]);
+    };
+
+    stateReducer = ([state, asyncErrors], key) => {
+        const [updatedState, _asyncErrors] = this.updateStateValue({
+            valueDescriptor: {
+                key,
+                value: state[key].value,
+                isTarget: false
+            },
+            previousState: state
+        });
+        return [updatedState, [...asyncErrors, _asyncErrors]];
     };
 
     updateStateSlice(previousState, valueDescriptor, errors) {
         const stateSlice = previousState[valueDescriptor.key];
         const updatedStateSlice = this.setErrorsAndStatus({ stateSlice, valueDescriptor, errors });
-        const updatedState = { ...previousState, [valueDescriptor.key]: updatedStateSlice };
-        return updatedState;
+        return { ...previousState, [valueDescriptor.key]: updatedStateSlice };
     }
 
     /**
@@ -97,49 +106,32 @@ export class Validator extends React.Component {
     valueHandler(key) {
         let currentPromise = 0;
         return data => {
-            const value = this.getRawOrEventValue(data);
-            const valueDescriptor = { value, isTarget: true, key };
-            this.setState(previousState => {
-                const updatedStateSlice = {
-                    ...previousState[key],
-                    value
-                };
-                return {
-                    ...previousState,
-                    [key]: updatedStateSlice
-                };
-            });
+            const valueDescriptor = { value: this.getRawOrEventValue(data), isTarget: true, key };
+            this.setState(FormHelper.updateValue(['config', key, 'value'], valueDescriptor.value));
             const innerPromise = ++currentPromise;
-            const [newState, asyncErrors] = this.updateStateValue({ valueDescriptor, previousState: this.state });
-            this.setState(prevState => FormHelper.mergeWithoutField(prevState, newState));
-            const filteredAsyncErrors = filterPromises(asyncErrors);
+            const [newState, asyncErrors] = this.updateStateValue({
+                valueDescriptor,
+                previousState: this.state.config
+            });
+            this.setState(prevState => ({ config: FormHelper.mergeWithoutField(prevState.config, newState) }));
+            const filteredAsyncErrors = FormHelper.filterPromises(asyncErrors);
             if (innerPromise === currentPromise && filteredAsyncErrors.length !== 0) {
-                this.runAsync(asyncErrors, valueDescriptor);
+                this.runAsync(filteredAsyncErrors, valueDescriptor);
             }
         };
     }
 
     getRawOrEventValue(data) {
-        return data && data.target && data.target.value !== undefined ? data.target.value : data;
+        return pathOr(data, ['target', 'value'], data);
     }
 
     runAsync(asyncErrors, valueDescriptor) {
         Promise.all(asyncErrors).catch(errors => {
             this.setState(prevState => {
-                const updatedState = this.updateStateSlice(prevState, valueDescriptor, errors);
-                return FormHelper.mergeWithoutField(prevState, updatedState);
+                const updatedState = this.updateStateSlice(prevState.config, valueDescriptor, errors);
+                return { config: FormHelper.mergeWithoutField(prevState.config, updatedState) };
             });
         });
-    }
-
-    /**
-     * Check validity of the field
-     *
-     * @param {InputType} field
-     * @returns {boolean}
-     */
-    isValidField(field) {
-        return field.status.valid;
     }
 
     /**
@@ -148,7 +140,7 @@ export class Validator extends React.Component {
      * @returns {Output}
      */
     collectFormValues() {
-        const [values, valid] = FormHelper.mergeFieldsWithHandlers(this.state, this.handlers);
+        const [values, valid] = FormHelper.mergeFieldsWithHandlers(this.state.config, this.handlers);
         return {
             ...ConfigUtility.unflatten(values),
             valid,

@@ -1,6 +1,11 @@
+//#region Import statements
 import { findCircularDependency } from './circullarErrors';
-import isEmpty from 'is-empty';
 import { FormItem } from '../components/FormItem';
+import isEmpty from 'ramda/src/isEmpty';
+import mapObjIndexed from 'ramda/src/mapObjIndexed';
+import forEachObjIndexed from 'ramda/src/forEachObjIndexed';
+import compose from 'ramda/src/compose';
+//#endregion
 
 const updateDependenciesOfParsedConfig = (parsedConfig, baseField) => field => {
     if (parsedConfig[field] !== void 0) {
@@ -47,21 +52,23 @@ export const unflatten = cfg => {
     return pcfg;
 };
 
+const _parseConfig = compose(mapObjIndexed(value => FormItem.of(value)), flatten);
+
 export const parseConfig = cfg => {
-    const config = flatten(cfg);
-    let parsedConfig = {};
-    for (let key in config) {
-        const form = FormItem.of(config[key]);
-        parsedConfig[key] = form;
-    }
-    Object.entries(parsedConfig).map(([key, value]) => {
+    const parsedConfig = _parseConfig(cfg);
+    forEachObjIndexed((value, key, object) => {
         const withFields = value.findObjectDependencies();
         if (withFields.length !== 0) {
-            withFields.forEach(updateDependenciesOfParsedConfig(parsedConfig, key));
+            withFields.forEach(updateDependenciesOfParsedConfig(object, key));
         }
-    });
+    }, parsedConfig);
     if (process.env.NODE_ENV !== 'production') {
         findCircularDependency(parsedConfig);
     }
     return parsedConfig;
 };
+
+export const mergeConfigs = (targetConfig, previousConfig) =>
+    mapObjIndexed((configItem, key) => {
+        return key in previousConfig ? configItem.concat(previousConfig) : configItem;
+    }, targetConfig);

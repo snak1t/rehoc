@@ -90,7 +90,7 @@ describe('Parsing validation config', () => {
         expect(parseValidationConfig(validationConfig)).toBeInstanceOf(Object);
     });
 
-    fit('should parse a config according to rules', () => {
+    it('should parse a config according to rules', () => {
         const configWithFormItems = parseValidationConfig(validationConfig);
         expect(configWithFormItems['userinfo.login'].dependency).toEqual(expectedOutput['userinfo.login'].dependency);
         expect(configWithFormItems.dumb.dependency).toEqual(['userinfo.email']);

@@ -9,30 +9,43 @@ export const handleAsyncValidation = (v, otherValues) => value => {
     );
 };
 
-export const handleSyncValidation = (v, otherFields) => value =>
-    v.rule(value, ...otherFields) ? Promise.resolve(value) : Promise.reject(v.multiple ? v.message : [v.message]);
-
-const skipValidation = (field, isTarget, value, validators) =>
-    (field.status.dirty === false && !isTarget) || (!field.required && isEmpty(value)) || validators === void 0;
-
-export const performValidation = (state, key, value, validators, isTarget) => {
-    const checkValidator = v => {
-        const otherFields = v.withFields ? v.withFields.map(k => state[k].value) : [];
-        return v.async ? handleAsyncValidation(v, otherFields) : handleSyncValidation(v, otherFields);
-    };
-
-    return skipValidation(state[key], isTarget, value, validators)
-        ? Promise.resolve([])
-        : Promise.all(validators.map(checkValidator).map(v => v(value)))
-              .then(() => [])
-              .catch(errors => errors);
-    // validators
-    //       .reduce((monad, v) => monad.then(checkValidator(v)), Promise.resolve(value))
-    //       .then(() => [])
-    //       .catch(errors => errors);
+const handleSyncValidation = (v, otherFields) => ([value, errors]) => {
+    const result = v.rule(value, ...otherFields);
+    return [value, result ? errors : [...errors, v.message]];
 };
 
-export const mergeWithoudField = (objWithValues, objWOValues) => {
+const skipValidation = (field, isTarget, value) =>
+    (field.status.dirty === false && !isTarget) ||
+    (!field.required && isEmpty(value)) ||
+    [...field.validators, ...field.asyncValidators].length === 0;
+
+export const performValidation = ({ state, valueDescriptor }) => {
+    const stateField = state[valueDescriptor.key];
+    if (skipValidation(stateField, valueDescriptor.isTarget, valueDescriptor.value)) {
+        return [[], []];
+    }
+
+    const getOtherFields = v => {
+        return v.withFields ? v.withFields.map(k => state[k].value) : [];
+    };
+
+    const checkValidator = v => {
+        return (v.async ? handleAsyncValidation : handleSyncValidation)(v, getOtherFields(v));
+    };
+
+    const [, errors] = stateField.validators
+        .map(checkValidator)
+        .reduce((acc, validator) => validator(acc), [valueDescriptor.value, []]);
+
+    const promise =
+        stateField.asyncValidators.length !== 0 && errors.length === 0
+            ? stateField.asyncValidators.map(checkValidator).map(v => v(valueDescriptor.value))
+            : [];
+
+    return [errors, promise];
+};
+
+export const mergeWithoutField = (objWithValues, objWOValues) => {
     const resultedObject = {};
     for (const key of Object.keys(objWOValues)) {
         resultedObject[key] = {

@@ -4,7 +4,7 @@ import { withValidation } from '../src/Validator';
 
 const waiter = () =>
     new Promise((res, rej) => {
-        setTimeout(() => res(), 500);
+        setTimeout(() => res(), 2);
     });
 
 const DummyForm = ({ login, asyncField }) => (
@@ -22,7 +22,7 @@ const validationConfig = {
     asyncField: {
         validators: [
             {
-                rule: (value, done) => setTimeout(() => done(value), 100),
+                rule: (value, done) => setTimeout(() => done(value), 1),
                 message: 'AsyncMsg',
                 async: true
             }
@@ -31,53 +31,42 @@ const validationConfig = {
 };
 
 describe('Validator', () => {
-    it('should exist', () => {
+    let component;
+    let testForm;
+    beforeAll(() => {
         const Component = withValidation(validationConfig)(DummyForm);
-        const component = mount(<Component />);
-        const testForm = component.find(DummyForm);
+        component = mount(<Component />);
+        testForm = component.find(DummyForm);
+    });
+
+    it('should exist', () => {
         expect(component.exists()).toEqual(true);
         expect(testForm.props()).toMatchSnapshot();
     });
 
     it('should update a string value', () => {
-        const Component = withValidation(validationConfig)(DummyForm);
-        const component = mount(<Component />);
-        const testForm = component.find(DummyForm);
         const input = component.find('.loginInput');
         input.simulate('change', { target: { value: 'Sam' } });
         expect(testForm.props().login.value).toEqual('Sam');
     });
 
     it('should mark a field as dirty if changed', async () => {
-        const Component = withValidation(validationConfig)(DummyForm);
-        const component = mount(<Component />);
-        const testForm = component.find(DummyForm);
         const input = component.find('.loginInput');
         input.simulate('change', { target: { value: 'John' } });
-        await waiter();
         expect(testForm.props().login.status.dirty).toEqual(true);
     });
 
     it('should mark a field as valid if provided with valid value', async () => {
-        const Component = withValidation(validationConfig)(DummyForm);
-        const component = mount(<Component />);
-        const testForm = component.find(DummyForm);
         const input = component.find('.loginInput');
         input.simulate('change', { target: { value: 'Sam' } });
-        await waiter();
         expect(testForm.props().login.status.valid).toEqual(false);
         input.simulate('change', { target: { value: 'John' } });
-        await waiter();
         expect(testForm.props().login.status.valid).toEqual(true);
     });
 
     it('should provide an error array if specified value is incorrect', async () => {
-        const Component = withValidation(validationConfig)(DummyForm);
-        const component = mount(<Component />);
-        const testForm = component.find(DummyForm);
         const input = component.find('.loginInput');
         input.simulate('change', { target: { value: 'Sam' } });
-        await waiter();
         expect(testForm.props().login.status.valid).toEqual(false);
         expect(testForm.props().login.errors).toBeInstanceOf(Array);
         expect(testForm.props().login.errors.length).toEqual(1);
@@ -85,9 +74,6 @@ describe('Validator', () => {
     });
 
     it('should also deal with async validations', async () => {
-        const Component = withValidation(validationConfig)(DummyForm);
-        const component = mount(<Component />);
-        const testForm = component.find(DummyForm);
         const input = component.find('.asyncInput');
         input.simulate('change', { target: { value: true } });
         await waiter();

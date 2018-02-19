@@ -3,6 +3,14 @@
 exports[`Validator should exist 1`] = `
 Object {
   "asyncField": Object {
+    "asyncValidators": Array [
+      Object {
+        "async": true,
+        "message": "AsyncMsg",
+        "rule": [Function],
+      },
+    ],
+    "dependency": Array [],
     "errors": Array [],
     "handler": [Function],
     "required": true,
@@ -10,9 +18,12 @@ Object {
       "dirty": false,
       "valid": false,
     },
+    "validators": Array [],
     "value": "",
   },
   "login": Object {
+    "asyncValidators": Array [],
+    "dependency": Array [],
     "errors": Array [],
     "handler": [Function],
     "required": true,
@@ -20,6 +31,12 @@ Object {
       "dirty": false,
       "valid": false,
     },
+    "validators": Array [
+      Object {
+        "message": "Name must be John",
+        "rule": [Function],
+      },
+    ],
     "value": "",
   },
   "valid": false,

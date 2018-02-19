@@ -1,36 +1,45 @@
-import parseValidationConfig from '../src/utils/parseConfig';
+import { parseConfig as parseValidationConfig } from '../src/utils/parseConfig';
 
 const rule = () => true;
 
 const validationConfig = {
-    login: {
-        validators: [{ rule, message: '1' }, { rule, message: '2' }],
-        initialValue: 'John'
-    },
-    email: {
-        validators: [{ rule, message: 'email' }],
-        required: false
+    userinfo: {
+        __nested: true,
+        login: {
+            validators: [{ rule, message: '1' }, { rule, message: '2' }],
+            initialValue: 'John'
+        },
+        email: {
+            validators: [{ rule, message: 'email', withFields: ['dumb'] }],
+            required: false
+        }
     },
     password: {
-        validators: [{ rule, message: '3', withFields: ['login'] }, { rule, message: '4', withFields: ['email'] }]
+        validators: [
+            { rule, message: '3', withFields: ['userinfo.login'] },
+            { rule, message: '4', withFields: ['userinfo.email'] }
+        ]
     },
     passwordConfirm: {
         validators: [{ rule, message: '5' }, { rule, message: '6', withFields: ['password'] }]
+    },
+    dumb: {
+        validators: [{ rule, message: '7', withFields: ['userinfo.login'] }]
     }
 };
 
 const expectedOutput = {
-    login: {
+    'userinfo.login': {
         value: 'John',
         errors: [],
-        dependency: ['password'],
+        dependency: ['password', 'dumb'],
         required: true,
         status: {
             dirty: false,
             valid: false
         }
     },
-    email: {
+    'userinfo.email': {
         value: '',
         errors: [],
         dependency: ['password'],
@@ -59,6 +68,16 @@ const expectedOutput = {
             dirty: false,
             valid: false
         }
+    },
+    dumb: {
+        value: '',
+        errors: [],
+        dependency: [],
+        required: true,
+        status: {
+            dirty: false,
+            valid: false
+        }
     }
 };
 
@@ -71,9 +90,9 @@ describe('Parsing validation config', () => {
         expect(parseValidationConfig(validationConfig)).toBeInstanceOf(Object);
     });
 
-    it('should parse a config according to rules', () => {
+    fit('should parse a config according to rules', () => {
         const configWithFormItems = parseValidationConfig(validationConfig);
-        const parsedConfigKeys = Object.keys(configWithFormItems).sort();
-        expect(parsedConfigKeys).toEqual(Object.keys(expectedOutput).sort());
+        expect(configWithFormItems['userinfo.login'].dependency).toEqual(expectedOutput['userinfo.login'].dependency);
+        expect(configWithFormItems.dumb.dependency).toEqual(['userinfo.email']);
     });
 });

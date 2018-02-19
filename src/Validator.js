@@ -1,6 +1,6 @@
 import isEmpty from 'is-empty';
 import React from 'react';
-import parseConfig from './utils/parseConfig';
+import * as ConfigUtility from './utils/parseConfig';
 import { mapObject } from './utils/mapObject';
 import * as FormHelper from './utils/form-helpers';
 
@@ -15,7 +15,7 @@ export class Validator extends React.Component {
 
     constructor(props) {
         super(props);
-        this.state = parseConfig(this.props.config);
+        this.state = ConfigUtility.parseConfig(this.props.config);
         this.handlers = this.prepareHandlers(this.state);
     }
 
@@ -150,7 +150,7 @@ export class Validator extends React.Component {
     collectFormValues() {
         const [values, valid] = FormHelper.mergeFieldsWithHandlers(this.state, this.handlers);
         return {
-            ...values,
+            ...ConfigUtility.unflatten(values),
             valid,
             validateAll: this.validateAll
         };

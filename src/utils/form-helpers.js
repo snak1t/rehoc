@@ -3,7 +3,11 @@ import lensPath from 'ramda/src/lensPath';
 import set from 'ramda/src/set';
 import filter from 'ramda/src/filter';
 import isEmpty from 'ramda/src/isEmpty';
+import has from 'ramda/src/has';
+import path from 'ramda/src/path';
 import mapObjIndexed from 'ramda/src/mapObjIndexed';
+import { mapRecursively } from './mapRecursively';
+import { forEachRecursively } from './forEachRecuresively';
 //#endregion
 
 export const isDirty = (stateSlice, isTarget) => stateSlice.status.dirty || isTarget;
@@ -27,13 +31,13 @@ const skipValidation = (field, isTarget, value) =>
   [...field.validators, ...field.asyncValidators].length === 0;
 
 export const performValidation = ({ state, valueDescriptor }) => {
-  const stateField = state[valueDescriptor.key];
+  const stateField = path(valueDescriptor.key, state);
   if (skipValidation(stateField, valueDescriptor.isTarget, valueDescriptor.value)) {
     return [[], []];
   }
 
   const getOtherFields = v => {
-    return v.withFields ? v.withFields.map(k => state[k].value) : [];
+    return v.withFields ? v.withFields.map(k => path([...k.split('.'), 'value'], state)) : [];
   };
 
   const checkValidator = v => {
@@ -53,26 +57,30 @@ export const performValidation = ({ state, valueDescriptor }) => {
 };
 
 export const mergeWithoutField = (objWithValues, objWOValues) =>
-  mapObjIndexed(
-    (element, key) => ({
-      ...objWithValues[key],
+  mapRecursively(has('value'), (element, _, _key) => {
+    const key = _key.split('.');
+    const keyPath = path(key);
+    if (element === keyPath(objWithValues)) {
+      return element;
+    }
+    return {
+      ...keyPath(objWithValues),
       ...element,
-      value: objWithValues[key].value
-    }),
-    objWOValues
-  );
+      value: path([...key, 'value'], objWithValues)
+    };
+  })(objWOValues);
 
 export const isFormValid = formState => {
-  for (const key in formState) {
-    if (formState.hasOwnProperty(key)) {
-      const element = formState[key];
-      if (!element.status.valid) {
-        return false;
-      }
+  let valid = true;
+  forEachRecursively(isFormItem, value => {
+    if (!value.status.valid) {
+      valid = false;
     }
-  }
-  return true;
+  })(formState);
+  return valid;
 };
+
+export const isFormItem = has('value');
 
 export const filterPromises = filter(p => p instanceof Promise);
 

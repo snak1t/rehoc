@@ -2,7 +2,7 @@
 
 exports[`Validator should exist 1`] = `
 Object {
-  "asyncField": Object {
+  "asyncField": FormItem {
     "asyncValidators": Array [
       Object {
         "async": true,
@@ -21,7 +21,7 @@ Object {
     "validators": Array [],
     "value": "",
   },
-  "login": Object {
+  "login": FormItem {
     "asyncValidators": Array [],
     "dependency": Array [],
     "errors": Array [],

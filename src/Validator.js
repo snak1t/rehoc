@@ -11,6 +11,7 @@ import over from 'ramda/src/over';
 import view from 'ramda/src/view';
 import path from 'ramda/src/path';
 import evolve from 'ramda/src/evolve';
+import tap from 'ramda/src/tap';
 import compose from 'ramda/src/compose';
 import { FormItem } from './components/FormItem';
 import { Key } from './components/keys';
@@ -32,7 +33,7 @@ export class Validator extends React.Component {
 
   componentDidMount() {
     if (this.props.options.eager) {
-      this.validateAll();
+      return this.validateAll();
     }
     this.validateNotEmptyValues();
   }
@@ -48,10 +49,7 @@ export class Validator extends React.Component {
   }
 
   parseConfig = compose(
-    mapRecursively(FormHelper.isFormItem, (cfg, _, compoundKey) => ({
-      ...cfg,
-      handler: this.valueHandler(compoundKey)
-    })),
+    mapRecursively(FormHelper.isFormItem, (cfg, _, compoundKey) => cfg.setHandler(this.valueHandler(compoundKey))),
     ConfigUtility.parseConfig,
     path(['config'])
   );
@@ -63,19 +61,14 @@ export class Validator extends React.Component {
       if (!isEmpty(cfgItem.value)) {
         cfgItem.handler(cfgItem.value);
       }
-    });
+    })(this.state.config);
   }
 
   setErrorsAndStatus = ({ valueDescriptor, errors }) => stateSlice => {
     const dirty = FormHelper.isDirty(stateSlice, valueDescriptor.isTarget);
     const valid = FormHelper.isValid(stateSlice, valueDescriptor.value, errors, dirty);
     const status = { dirty, valid };
-    return {
-      ...stateSlice,
-      errors,
-      value: valueDescriptor.value,
-      status
-    };
+    return stateSlice.concat({ errors, value: valueDescriptor.value, status });
   };
 
   updateStateValue = ({ valueDescriptor, previousState }) => {
@@ -119,14 +112,16 @@ export class Validator extends React.Component {
     let currentPromise = 0;
     return data => {
       const valueDescriptor = { value: this.getRawOrEventValue(data), isTarget: true, key: Key(key) };
-      const path = valueDescriptor.key.prepend('config').append('value').value;
-      this.setState(FormHelper.updateValue(path, valueDescriptor.value));
       const innerPromise = ++currentPromise;
       const [newState, asyncErrors] = this.updateStateValue({
         valueDescriptor,
         previousState: this.state.config
       });
-      this.setState(prevState => ({ config: FormHelper.mergeWithoutField(prevState.config, newState) }));
+      this.setState(
+        evolve({
+          config: FormHelper.updateConfig(newState, valueDescriptor)
+        })
+      );
       const filteredAsyncErrors = FormHelper.filterPromises(asyncErrors);
       if (innerPromise === currentPromise && filteredAsyncErrors.length !== 0) {
         this.runAsync(filteredAsyncErrors, valueDescriptor);
@@ -140,10 +135,8 @@ export class Validator extends React.Component {
 
   runAsync(asyncErrors, valueDescriptor) {
     Promise.all(asyncErrors).catch(errors => {
-      this.setState(prevState => {
-        const updatedState = this.updateStateSlice(prevState.config, valueDescriptor, errors);
-        return { config: FormHelper.mergeWithoutField(prevState.config, updatedState) };
-      });
+      const updatedState = this.updateStateSlice(this.state.config, valueDescriptor, errors);
+      this.setState(evolve({ config: FormHelper.mergeWithoutField(updatedState) }));
     });
   }
 

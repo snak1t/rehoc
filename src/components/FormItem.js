@@ -12,6 +12,11 @@ export class FormItem {
     return new FormItem().setConfig(config);
   }
 
+  setHandler(handler) {
+    this.handler = handler;
+    return this;
+  }
+
   setConfig(config) {
     this.required = config.required === void 0 ? true : config.required;
     this.value = config.initialValue !== void 0 ? config.initialValue : '';
@@ -25,10 +30,26 @@ export class FormItem {
   }
 
   concat(formItem) {
-    this.status = formItem.status;
-    this.errors = formItem.errors;
-    this.value = formItem.value;
-    return this;
+    const clone = this.clone();
+    for (const key in formItem) {
+      if (formItem.hasOwnProperty(key)) {
+        clone[key] = formItem[key];
+      }
+    }
+    return clone;
+  }
+
+  clone() {
+    const nFI = new FormItem();
+    nFI.required = this.required;
+    nFI.value = this.value;
+    nFI.status = this.status;
+    nFI.errors = this.errors;
+    nFI.validators = this.validators;
+    nFI.asyncValidators = this.asyncValidators;
+    nFI.handler = this.handler;
+    nFI.dependency = this.dependency;
+    return nFI;
   }
 
   findObjectDependencies() {

@@ -1,14 +1,16 @@
 //#region  Import Statements
 import { Key } from '../components/keys';
 import lensPath from 'ramda/src/lensPath';
-import set from 'ramda/src/set';
+import over from 'ramda/src/over';
 import filter from 'ramda/src/filter';
 import isEmpty from 'ramda/src/isEmpty';
-import has from 'ramda/src/has';
+import is from 'ramda/src/is';
 import path from 'ramda/src/path';
+import compose from 'ramda/src/compose';
 import mapObjIndexed from 'ramda/src/mapObjIndexed';
 import { mapRecursively } from './mapRecursively';
 import { forEachRecursively } from './forEachRecuresively';
+import { FormItem } from '../components/FormItem';
 //#endregion
 
 export const isDirty = (stateSlice, isTarget) => stateSlice.status.dirty || isTarget;
@@ -63,18 +65,14 @@ export const performValidation = ({ state, valueDescriptor }) => {
   return [errors, promise];
 };
 
-export const mergeWithoutField = (objWithValues, objWOValues) =>
-  mapRecursively(has('value'), (element, _, key) => {
+export const mergeWithoutField = objWOValues => objWithValues =>
+  mapRecursively(isFormItem, (element, _, key) => {
     const keyHelper = Key(key);
     const valueItem = keyHelper.execute(objWithValues);
     if (element === valueItem) {
       return element;
     }
-    return {
-      ...valueItem,
-      ...element,
-      value: keyHelper.append('value').execute(objWithValues)
-    };
+    return valueItem.concat(element).concat({ value: keyHelper.append('value').execute(objWithValues) });
   })(objWOValues);
 
 export const isFormValid = formState => {
@@ -87,8 +85,11 @@ export const isFormValid = formState => {
   return valid;
 };
 
-export const isFormItem = has('value');
+export const isFormItem = is(FormItem);
 
-export const filterPromises = filter(p => p instanceof Promise);
+export const filterPromises = filter(is(Promise));
 
-export const updateValue = (path, value) => set(lensPath(path), value);
+const updateValue = (path, value) => over(lensPath(path.value), x => x.concat({ value }));
+
+export const updateConfig = (state, valueDescriptor) =>
+  compose(mergeWithoutField(state), updateValue(valueDescriptor.key, valueDescriptor.value));

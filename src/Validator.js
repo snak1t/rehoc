@@ -5,13 +5,15 @@ import * as FormHelper from './utils/form-helpers';
 import { mapRecursively } from './utils/mapRecursively';
 import { forEachRecursively } from './utils/forEachRecuresively';
 import pathOr from 'ramda/src/pathOr';
-import has from 'ramda/src/has';
 import isEmpty from 'ramda/src/isEmpty';
 import lensPath from 'ramda/src/lensPath';
 import over from 'ramda/src/over';
 import view from 'ramda/src/view';
 import path from 'ramda/src/path';
+import evolve from 'ramda/src/evolve';
+import compose from 'ramda/src/compose';
 import { FormItem } from './components/FormItem';
+import { Key } from './components/keys';
 //#endregion
 
 export class Validator extends React.Component {
@@ -23,9 +25,8 @@ export class Validator extends React.Component {
 
   constructor(props) {
     super(props);
-    const config = ConfigUtility.parseConfig(this.props.config);
     this.state = {
-      config: this.attachHandlertsToConfig(config)
+      config: this.parseConfig(props)
     };
   }
 
@@ -38,24 +39,28 @@ export class Validator extends React.Component {
 
   componentWillReceiveProps(nextProps) {
     if (nextProps.config !== this.props.config) {
-      this.setState(prevState => {
-        const newConfig = ConfigUtility.parseConfig(nextProps.config);
-        const configWithHandlers = this.attachHandlertsToConfig(newConfig);
-        return { config: ConfigUtility.mergeConfigs(configWithHandlers, prevState) };
-      });
+      this.setState(
+        evolve({
+          config: ConfigUtility.mergeConfigs(this.parseConfig(nextProps))
+        })
+      );
     }
   }
 
-  attachHandlertsToConfig = mapRecursively(FormHelper.isFormItem, (cfg, _, compoundKey) => ({
-    ...cfg,
-    handler: this.valueHandler(compoundKey)
-  }));
+  parseConfig = compose(
+    mapRecursively(FormHelper.isFormItem, (cfg, _, compoundKey) => ({
+      ...cfg,
+      handler: this.valueHandler(compoundKey)
+    })),
+    ConfigUtility.parseConfig,
+    path(['config'])
+  );
 
   validateAll = () => forEachRecursively(FormHelper.isFormItem, cfg => cfg.handler(cfg.value))(this.state.config);
 
   validateNotEmptyValues() {
     forEachRecursively(FormHelper.isFormItem, cfgItem => {
-      if (!isEmpty) {
+      if (!isEmpty(cfgItem.value)) {
         cfgItem.handler(cfgItem.value);
       }
     });
@@ -78,7 +83,7 @@ export class Validator extends React.Component {
       state: previousState,
       valueDescriptor
     });
-    const lens = lensPath(valueDescriptor.key);
+    const lens = lensPath(valueDescriptor.key.value);
     const updatedState = over(lens, this.setErrorsAndStatus({ valueDescriptor, errors }), previousState);
     const dependencies = view(lens, updatedState).dependency;
     return dependencies.length === 0
@@ -87,11 +92,11 @@ export class Validator extends React.Component {
   };
 
   stateReducer = ([state, asyncErrors], key) => {
-    const keyArray = key.split('.');
+    const keyHelper = Key(key);
     const [updatedState, _asyncErrors] = this.updateStateValue({
       valueDescriptor: {
-        key: keyArray,
-        value: path([...keyArray, 'value'], state),
+        key: keyHelper,
+        value: keyHelper.append('value').execute(state),
         isTarget: false
       },
       previousState: state
@@ -100,7 +105,7 @@ export class Validator extends React.Component {
   };
 
   updateStateSlice(previousState, valueDescriptor, errors) {
-    const lens = lensPath(valueDescriptor.key);
+    const lens = lensPath(valueDescriptor.key.value);
     return over(lens, this.setErrorsAndStatus({ valueDescriptor, errors }), previousState);
   }
 
@@ -113,8 +118,9 @@ export class Validator extends React.Component {
   valueHandler(key) {
     let currentPromise = 0;
     return data => {
-      const valueDescriptor = { value: this.getRawOrEventValue(data), isTarget: true, key: key.split('.') };
-      this.setState(FormHelper.updateValue(['config', ...valueDescriptor.key, 'value'], valueDescriptor.value));
+      const valueDescriptor = { value: this.getRawOrEventValue(data), isTarget: true, key: Key(key) };
+      const path = valueDescriptor.key.prepend('config').append('value').value;
+      this.setState(FormHelper.updateValue(path, valueDescriptor.value));
       const innerPromise = ++currentPromise;
       const [newState, asyncErrors] = this.updateStateValue({
         valueDescriptor,

@@ -1,4 +1,5 @@
 //#region  Import Statements
+import { Key } from '../components/keys';
 import lensPath from 'ramda/src/lensPath';
 import set from 'ramda/src/set';
 import filter from 'ramda/src/filter';
@@ -31,13 +32,19 @@ const skipValidation = (field, isTarget, value) =>
   [...field.validators, ...field.asyncValidators].length === 0;
 
 export const performValidation = ({ state, valueDescriptor }) => {
-  const stateField = path(valueDescriptor.key, state);
+  const stateField = valueDescriptor.key.execute(state);
   if (skipValidation(stateField, valueDescriptor.isTarget, valueDescriptor.value)) {
     return [[], []];
   }
 
   const getOtherFields = v => {
-    return v.withFields ? v.withFields.map(k => path([...k.split('.'), 'value'], state)) : [];
+    return v.withFields
+      ? v.withFields.map(k =>
+          Key(k)
+            .append('value')
+            .execute(state)
+        )
+      : [];
   };
 
   const checkValidator = v => {
@@ -57,16 +64,16 @@ export const performValidation = ({ state, valueDescriptor }) => {
 };
 
 export const mergeWithoutField = (objWithValues, objWOValues) =>
-  mapRecursively(has('value'), (element, _, _key) => {
-    const key = _key.split('.');
-    const keyPath = path(key);
-    if (element === keyPath(objWithValues)) {
+  mapRecursively(has('value'), (element, _, key) => {
+    const keyHelper = Key(key);
+    const valueItem = keyHelper.execute(objWithValues);
+    if (element === valueItem) {
       return element;
     }
     return {
-      ...keyPath(objWithValues),
+      ...valueItem,
       ...element,
-      value: path([...key, 'value'], objWithValues)
+      value: keyHelper.append('value').execute(objWithValues)
     };
   })(objWOValues);
 

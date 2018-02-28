@@ -5,31 +5,16 @@ import isEmpty from 'ramda/src/isEmpty';
 import mapObjIndexed from 'ramda/src/mapObjIndexed';
 import has from 'ramda/src/has';
 import path from 'ramda/src/path';
+import curryN from 'ramda/src/curryN';
 import { mapRecursively } from './mapRecursively';
 import { forEachRecursively } from './forEachRecuresively';
 import { FormNestedGroup } from './nested';
+import { Key } from '../components/keys';
 //#endregion
 
 const updateDependenciesOfParsedConfig = (parsedConfig, baseField) => field => {
-  const item = path(field.split('.'), parsedConfig);
+  const item = Key(field).execute(parsedConfig);
   item.addDependency(baseField);
-};
-
-export const unflatten = cfg => {
-  const pcfg = {};
-  Object.entries(cfg).forEach(([key, value]) => {
-    const parsedKey = key.split('.');
-    let currentF = pcfg;
-    while (parsedKey.length !== 1) {
-      const k = parsedKey.shift();
-      if (pcfg[k] === void 0) {
-        pcfg[k] = {};
-      }
-      currentF = pcfg[k];
-    }
-    currentF[parsedKey[0]] = value;
-  });
-  return pcfg;
 };
 
 const _parseConfig = mapRecursively(item => {
@@ -50,7 +35,8 @@ export const parseConfig = cfg => {
   return parsedConfig;
 };
 
-export const mergeConfigs = (targetConfig, previousConfig) =>
+export const mergeConfigs = curryN(2, (targetConfig, previousConfig) =>
   mapObjIndexed((configItem, key) => {
     return key in previousConfig ? configItem.concat(previousConfig) : configItem;
-  }, targetConfig);
+  }, targetConfig)
+);

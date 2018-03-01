@@ -12,6 +12,8 @@ Object {
     ],
     "dependency": Array [],
     "errors": Array [],
+    "handleAsyncValidation": [Function],
+    "handleSyncValidation": [Function],
     "handler": [Function],
     "required": true,
     "status": Object {
@@ -25,6 +27,8 @@ Object {
     "asyncValidators": Array [],
     "dependency": Array [],
     "errors": Array [],
+    "handleAsyncValidation": [Function],
+    "handleSyncValidation": [Function],
     "handler": [Function],
     "required": true,
     "status": Object {

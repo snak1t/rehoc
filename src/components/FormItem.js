@@ -75,4 +75,58 @@ export class FormItem {
     }
     return [syncValidators, asyncValidators];
   }
+
+  shouldSkipValidation(valueDescriptor) {
+    const { isTarget, value } = valueDescriptor;
+    return (
+      (this.status.dirty === false && !isTarget) ||
+      (!this.required && isEmpty(value)) ||
+      [...this.validators, ...this.asyncValidators].length === 0
+    );
+  }
+
+  runSyncValidation(getOtherFields, value) {
+    const [, errors] = this.validators
+      .map(v => this.handleSyncValidation(v, getOtherFields(v)))
+      .reduce((acc, validator) => validator(acc), [value, []]);
+    return errors;
+  }
+
+  handleSyncValidation = (validator, otherFields) => ([value, errors]) => {
+    const result = validator.rule(value, ...otherFields);
+    return [value, result ? errors : [...errors, validator.message]];
+  };
+
+  runAsyncValidation(getOtherFields, value) {
+    const promisesList =
+      this.asyncValidators.length !== 0
+        ? this.asyncValidators.map(v => this.handleAsyncValidation(v, getOtherFields(v))).map(v => v(value))
+        : [];
+    return promisesList;
+  }
+
+  handleAsyncValidation = (validator, otherValues) => value => {
+    return new Promise((resolve, reject) =>
+      validator.rule(
+        value,
+        ...otherValues,
+        test => (test ? resolve(value) : reject(validator.multiple ? validator.message : [validator.message]))
+      )
+    );
+  };
+
+  isDirty(isTarget) {
+    return this.status.dirty || isTarget;
+  }
+
+  isValid(value, errors, dirty) {
+    return !(!this.required && isEmpty(value)) ? errors.length === 0 && dirty : true;
+  }
+
+  setErrorsAndStatus(valueDescriptor, errors) {
+    const dirty = this.isDirty(valueDescriptor.isTarget);
+    const valid = this.isValid(valueDescriptor.value, errors, dirty);
+    const status = { dirty, valid };
+    return this.concat({ errors, value: valueDescriptor.value, status });
+  }
 }

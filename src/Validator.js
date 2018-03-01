@@ -4,7 +4,6 @@ import * as ConfigUtility from './utils/parseConfig';
 import * as FormHelper from './utils/form-helpers';
 import { mapRecursively } from './utils/mapRecursively';
 import { forEachRecursively } from './utils/forEachRecuresively';
-import pathOr from 'ramda/src/pathOr';
 import isEmpty from 'ramda/src/isEmpty';
 import lensPath from 'ramda/src/lensPath';
 import over from 'ramda/src/over';
@@ -15,6 +14,7 @@ import tap from 'ramda/src/tap';
 import compose from 'ramda/src/compose';
 import { FormItem } from './components/FormItem';
 import { Key } from './components/keys';
+import * as VD from './components/ValueDescriptor';
 //#endregion
 
 export class Validator extends React.Component {
@@ -64,54 +64,45 @@ export class Validator extends React.Component {
     })(this.state.config);
   }
 
-  setErrorsAndStatus = ({ valueDescriptor, errors }) => stateSlice => {
-    const dirty = FormHelper.isDirty(stateSlice, valueDescriptor.isTarget);
-    const valid = FormHelper.isValid(stateSlice, valueDescriptor.value, errors, dirty);
-    const status = { dirty, valid };
-    return stateSlice.concat({ errors, value: valueDescriptor.value, status });
-  };
+  setErrorsAndStatus = ({ valueDescriptor, errors }) => formItem =>
+    formItem.setErrorsAndStatus(valueDescriptor, errors);
 
   updateStateValue = ({ valueDescriptor, previousState }) => {
     const [errors, asyncErrors] = FormHelper.performValidation({
       state: previousState,
       valueDescriptor
     });
-    const lens = lensPath(valueDescriptor.key.value);
+    const lens = lensPath(VD.key(valueDescriptor));
     const updatedState = over(lens, this.setErrorsAndStatus({ valueDescriptor, errors }), previousState);
     const dependencies = view(lens, updatedState).dependency;
     return dependencies.length === 0
       ? [updatedState, asyncErrors]
-      : dependencies.reduce(this.stateReducer, [updatedState, asyncErrors]);
+      : dependencies.reduce(this.dependencyStateReducer, [updatedState, asyncErrors]);
   };
 
-  stateReducer = ([state, asyncErrors], key) => {
+  dependencyStateReducer = ([state, asyncErrors], key) => {
     const keyHelper = Key(key);
+    const valueDescriptor = {
+      key: keyHelper,
+      value: keyHelper.append('value').execute(state),
+      isTarget: false
+    };
     const [updatedState, _asyncErrors] = this.updateStateValue({
-      valueDescriptor: {
-        key: keyHelper,
-        value: keyHelper.append('value').execute(state),
-        isTarget: false
-      },
+      valueDescriptor,
       previousState: state
     });
     return [updatedState, [...asyncErrors, _asyncErrors]];
   };
 
   updateStateSlice(previousState, valueDescriptor, errors) {
-    const lens = lensPath(valueDescriptor.key.value);
+    const lens = lensPath(VD.key(valueDescriptor));
     return over(lens, this.setErrorsAndStatus({ valueDescriptor, errors }), previousState);
   }
 
-  /**
-   * Creates functions bound to a specific parts of state keys
-   *
-   * @param {string} key
-   * @returns {Function}
-   */
   valueHandler(key) {
     let currentPromise = 0;
-    return data => {
-      const valueDescriptor = { value: this.getRawOrEventValue(data), isTarget: true, key: Key(key) };
+    return value => {
+      const valueDescriptor = VD.of({ value, isTarget: true, key });
       const innerPromise = ++currentPromise;
       const [newState, asyncErrors] = this.updateStateValue({
         valueDescriptor,
@@ -129,10 +120,6 @@ export class Validator extends React.Component {
     };
   }
 
-  getRawOrEventValue(data) {
-    return pathOr(data, ['target', 'value'], data);
-  }
-
   runAsync(asyncErrors, valueDescriptor) {
     Promise.all(asyncErrors).catch(errors => {
       const updatedState = this.updateStateSlice(this.state.config, valueDescriptor, errors);
@@ -140,11 +127,6 @@ export class Validator extends React.Component {
     });
   }
 
-  /**
-   * Created props that will be passed to wrapped Component
-   *
-   * @returns {Output}
-   */
   collectFormValues() {
     return {
       ...this.state.config,

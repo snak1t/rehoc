@@ -13,29 +13,9 @@ import { forEachRecursively } from './forEachRecuresively';
 import { FormItem } from '../components/FormItem';
 //#endregion
 
-export const isDirty = (stateSlice, isTarget) => stateSlice.status.dirty || isTarget;
-export const isValid = (stateSlice, value, errors, dirty) =>
-  !(!stateSlice.required && isEmpty(value)) ? errors.length === 0 && dirty : true;
-
-export const handleAsyncValidation = (v, otherValues) => value => {
-  return new Promise((resolve, reject) =>
-    v.rule(value, ...otherValues, test => (test ? resolve(value) : reject(v.multiple ? v.message : [v.message])))
-  );
-};
-
-const handleSyncValidation = (v, otherFields) => ([value, errors]) => {
-  const result = v.rule(value, ...otherFields);
-  return [value, result ? errors : [...errors, v.message]];
-};
-
-const skipValidation = (field, isTarget, value) =>
-  (field.status.dirty === false && !isTarget) ||
-  (!field.required && isEmpty(value)) ||
-  [...field.validators, ...field.asyncValidators].length === 0;
-
 export const performValidation = ({ state, valueDescriptor }) => {
   const stateField = valueDescriptor.key.execute(state);
-  if (skipValidation(stateField, valueDescriptor.isTarget, valueDescriptor.value)) {
+  if (stateField.shouldSkipValidation(valueDescriptor)) {
     return [[], []];
   }
 
@@ -49,20 +29,12 @@ export const performValidation = ({ state, valueDescriptor }) => {
       : [];
   };
 
-  const checkValidator = v => {
-    return (v.async ? handleAsyncValidation : handleSyncValidation)(v, getOtherFields(v));
-  };
+  const syncErrors = stateField.runSyncValidation(getOtherFields, valueDescriptor.value);
 
-  const [, errors] = stateField.validators
-    .map(checkValidator)
-    .reduce((acc, validator) => validator(acc), [valueDescriptor.value, []]);
+  const asyncErrors =
+    syncErrors.length === 0 ? stateField.runAsyncValidation(getOtherFields, valueDescriptor.value) : [];
 
-  const promise =
-    stateField.asyncValidators.length !== 0 && errors.length === 0
-      ? stateField.asyncValidators.map(checkValidator).map(v => v(valueDescriptor.value))
-      : [];
-
-  return [errors, promise];
+  return [syncErrors, asyncErrors];
 };
 
 export const mergeWithoutField = objWOValues => objWithValues =>
